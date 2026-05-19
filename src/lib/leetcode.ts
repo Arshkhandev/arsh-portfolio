@@ -1,6 +1,6 @@
 /**
  * LeetCode Stats Library
- * Uses alfa-leetcode-api (public proxy) — bypasses LeetCode CORS block
+ * Uses alfa-leetcode-api proxy — bypasses LeetCode CORS block
  */
 
 export interface LeetCodeStats {
@@ -32,47 +32,38 @@ export interface RecentSubmission {
   lang: string;
 }
 
-// Public LeetCode proxy API — no auth needed, no CORS issues
 const PROXY_BASE = 'https://alfa-leetcode-api.onrender.com';
 
 export async function getLeetCodeStats(username: string): Promise<LeetCodeStats> {
   try {
-    // Fetch all data in parallel from the proxy
-    const [solvedRes, contestRes, calendarRes, recentRes] = await Promise.allSettled([
+    // Fetch all endpoints in parallel
+    const [profileRes, solvedRes, contestRes, recentRes] = await Promise.allSettled([
+      fetch(`${PROXY_BASE}/userProfile/${username}`, { next: { revalidate: 21600 } }),
       fetch(`${PROXY_BASE}/${username}/solved`, { next: { revalidate: 21600 } }),
       fetch(`${PROXY_BASE}/${username}/contest`, { next: { revalidate: 21600 } }),
-      fetch(`${PROXY_BASE}/${username}/calendar`, { next: { revalidate: 21600 } }),
       fetch(`${PROXY_BASE}/${username}/submission?limit=8`, { next: { revalidate: 21600 } }),
     ]);
 
-    // Parse solved stats
+    const profileData = profileRes.status === 'fulfilled' && profileRes.value.ok
+      ? await profileRes.value.json() : null;
+
     const solvedData = solvedRes.status === 'fulfilled' && solvedRes.value.ok
-      ? await solvedRes.value.json()
-      : null;
+      ? await solvedRes.value.json() : null;
 
-    // Parse contest data
     const contestData = contestRes.status === 'fulfilled' && contestRes.value.ok
-      ? await contestRes.value.json()
-      : null;
+      ? await contestRes.value.json() : null;
 
-    // Parse calendar
-    const calendarData = calendarRes.status === 'fulfilled' && calendarRes.value.ok
-      ? await calendarRes.value.json()
-      : null;
-
-    // Parse recent submissions
     const recentData = recentRes.status === 'fulfilled' && recentRes.value.ok
-      ? await recentRes.value.json()
-      : null;
+      ? await recentRes.value.json() : null;
 
-    if (!solvedData) {
+    if (!solvedData && !profileData) {
       throw new Error('Could not fetch LeetCode stats');
     }
 
-    // Parse submission calendar
+    // Parse submission calendar from profile data
     let calendar: Record<string, number> = {};
     try {
-      const raw = calendarData?.submissionCalendar ?? calendarData?.calendar ?? '{}';
+      const raw = profileData?.submissionCalendar ?? '{}';
       calendar = typeof raw === 'string' ? JSON.parse(raw) : raw;
     } catch {
       calendar = {};
@@ -89,14 +80,14 @@ export async function getLeetCodeStats(username: string): Promise<LeetCodeStats>
       lang: s.lang ?? '',
     }));
 
-    const totalSolved = solvedData.solvedProblem ?? solvedData.totalSolved ?? 0;
-    const easySolved = solvedData.easySolved ?? 0;
-    const mediumSolved = solvedData.mediumSolved ?? 0;
-    const hardSolved = solvedData.hardSolved ?? 0;
-    const totalQuestions = solvedData.totalQuestions ?? 3000;
-    const easyTotal = solvedData.totalEasyQuestions ?? 800;
-    const mediumTotal = solvedData.totalMediumQuestions ?? 1600;
-    const hardTotal = solvedData.totalHardQuestions ?? 600;
+    const totalSolved = solvedData?.solvedProblem ?? profileData?.totalSolved ?? 0;
+    const easySolved = solvedData?.easySolved ?? profileData?.easySolved ?? 0;
+    const mediumSolved = solvedData?.mediumSolved ?? profileData?.mediumSolved ?? 0;
+    const hardSolved = solvedData?.hardSolved ?? profileData?.hardSolved ?? 0;
+    const totalQuestions = solvedData?.totalQuestions ?? 3000;
+    const easyTotal = solvedData?.totalEasyQuestions ?? 800;
+    const mediumTotal = solvedData?.totalMediumQuestions ?? 1600;
+    const hardTotal = solvedData?.totalHardQuestions ?? 600;
 
     return {
       username,
@@ -109,16 +100,14 @@ export async function getLeetCodeStats(username: string): Promise<LeetCodeStats>
       hardSolved,
       hardTotal,
       acceptanceRate: totalQuestions > 0
-        ? Math.round((totalSolved / totalQuestions) * 100 * 10) / 10
-        : 0,
-      ranking: solvedData.ranking ?? 0,
-      contributionPoints: solvedData.contributionPoints ?? 0,
-      reputation: solvedData.reputation ?? 0,
+        ? Math.round((totalSolved / totalQuestions) * 100 * 10) / 10 : 0,
+      ranking: profileData?.ranking ?? 0,
+      contributionPoints: profileData?.contributionPoints ?? 0,
+      reputation: profileData?.reputation ?? 0,
       submissionCalendar: calendar,
       recentSubmissions,
       contestRating: contestData?.contestRating
-        ? Math.round(contestData.contestRating)
-        : null,
+        ? Math.round(contestData.contestRating) : null,
       contestAttended: contestData?.contestAttend ?? 0,
       contestTopPercentage: contestData?.contestTopPercentage ?? null,
     };
