@@ -1,3 +1,8 @@
+/**
+ * LeetCode Stats Library
+ * Uses alfa-leetcode-api (public proxy) — bypasses LeetCode CORS block
+ */
+
 export interface LeetCodeStats {
   username: string;
   totalSolved: number;
@@ -27,125 +32,95 @@ export interface RecentSubmission {
   lang: string;
 }
 
-const LEETCODE_GRAPHQL = 'https://leetcode.com/graphql';
-
-const STATS_QUERY = `
-  query getUserProfile($username: String!) {
-    allQuestionsCount {
-      difficulty
-      count
-    }
-    matchedUser(username: $username) {
-      username
-      contributions { points }
-      profile {
-        reputation
-        ranking
-      }
-      submitStats {
-        acSubmissionNum {
-          difficulty
-          count
-        }
-        totalSubmissionNum {
-          difficulty
-          count
-        }
-      }
-      submissionCalendar
-      recentSubmissionList(limit: 8) {
-        title
-        titleSlug
-        timestamp
-        statusDisplay
-        lang
-      }
-    }
-  }
-`;
-
-const CONTEST_QUERY = `
-  query getUserContestRanking($username: String!) {
-    userContestRanking(username: $username) {
-      attendedContestsCount
-      rating
-      topPercentage
-    }
-  }
-`;
-
-async function fetchGraphQL(query: string, variables: Record<string, string>) {
-  const response = await fetch(LEETCODE_GRAPHQL, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'Referer': 'https://leetcode.com',
-      'Origin': 'https://leetcode.com',
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120 Safari/537.36',
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-  if (!response.ok) throw new Error(`LeetCode API ${response.status}`);
-  return response.json();
-}
+// Public LeetCode proxy API — no auth needed, no CORS issues
+const PROXY_BASE = 'https://alfa-leetcode-api.onrender.com';
 
 export async function getLeetCodeStats(username: string): Promise<LeetCodeStats> {
   try {
-    const [statsResult, contestResult] = await Promise.allSettled([
-      fetchGraphQL(STATS_QUERY, { username }),
-      fetchGraphQL(CONTEST_QUERY, { username }),
+    // Fetch all data in parallel from the proxy
+    const [solvedRes, contestRes, calendarRes, recentRes] = await Promise.allSettled([
+      fetch(`${PROXY_BASE}/${username}/solved`, { next: { revalidate: 21600 } }),
+      fetch(`${PROXY_BASE}/${username}/contest`, { next: { revalidate: 21600 } }),
+      fetch(`${PROXY_BASE}/${username}/calendar`, { next: { revalidate: 21600 } }),
+      fetch(`${PROXY_BASE}/${username}/submission?limit=8`, { next: { revalidate: 21600 } }),
     ]);
 
-    const data = statsResult.status === 'fulfilled' ? statsResult.value?.data : null;
+    // Parse solved stats
+    const solvedData = solvedRes.status === 'fulfilled' && solvedRes.value.ok
+      ? await solvedRes.value.json()
+      : null;
 
-    if (!data?.matchedUser) {
-      throw new Error('User not found on LeetCode');
+    // Parse contest data
+    const contestData = contestRes.status === 'fulfilled' && contestRes.value.ok
+      ? await contestRes.value.json()
+      : null;
+
+    // Parse calendar
+    const calendarData = calendarRes.status === 'fulfilled' && calendarRes.value.ok
+      ? await calendarRes.value.json()
+      : null;
+
+    // Parse recent submissions
+    const recentData = recentRes.status === 'fulfilled' && recentRes.value.ok
+      ? await recentRes.value.json()
+      : null;
+
+    if (!solvedData) {
+      throw new Error('Could not fetch LeetCode stats');
     }
 
-    const contestData =
-      contestResult.status === 'fulfilled'
-        ? contestResult.value?.data?.userContestRanking
-        : null;
-
-    const user = data.matchedUser;
-    const allQ = data.allQuestionsCount as Array<{ difficulty: string; count: number }>;
-    const acStats = user.submitStats.acSubmissionNum as Array<{ difficulty: string; count: number }>;
-
-    const getCount = (arr: typeof acStats, difficulty: string) =>
-      arr.find((x) => x.difficulty === difficulty)?.count ?? 0;
-
-    const getTotal = (difficulty: string) =>
-      allQ.find((x) => x.difficulty === difficulty)?.count ?? 0;
-
-    const totalSolved = getCount(acStats, 'All');
-    const totalQuestions = getTotal('All');
-
+    // Parse submission calendar
     let calendar: Record<string, number> = {};
     try {
-      calendar = JSON.parse(user.submissionCalendar ?? '{}');
+      const raw = calendarData?.submissionCalendar ?? calendarData?.calendar ?? '{}';
+      calendar = typeof raw === 'string' ? JSON.parse(raw) : raw;
     } catch {
       calendar = {};
     }
+
+    // Parse recent submissions
+    const recentSubmissions: RecentSubmission[] = (
+      recentData?.submission ?? recentData?.recentSubmissionList ?? []
+    ).map((s: any) => ({
+      title: s.title ?? '',
+      titleSlug: s.titleSlug ?? '',
+      timestamp: s.timestamp ?? '',
+      statusDisplay: s.statusDisplay ?? s.status ?? '',
+      lang: s.lang ?? '',
+    }));
+
+    const totalSolved = solvedData.solvedProblem ?? solvedData.totalSolved ?? 0;
+    const easySolved = solvedData.easySolved ?? 0;
+    const mediumSolved = solvedData.mediumSolved ?? 0;
+    const hardSolved = solvedData.hardSolved ?? 0;
+    const totalQuestions = solvedData.totalQuestions ?? 3000;
+    const easyTotal = solvedData.totalEasyQuestions ?? 800;
+    const mediumTotal = solvedData.totalMediumQuestions ?? 1600;
+    const hardTotal = solvedData.totalHardQuestions ?? 600;
 
     return {
       username,
       totalSolved,
       totalQuestions,
-      easySolved: getCount(acStats, 'Easy'),
-      easyTotal: getTotal('Easy'),
-      mediumSolved: getCount(acStats, 'Medium'),
-      mediumTotal: getTotal('Medium'),
-      hardSolved: getCount(acStats, 'Hard'),
-      hardTotal: getTotal('Hard'),
-      acceptanceRate: totalQuestions > 0 ? Math.round((totalSolved / totalQuestions) * 100 * 10) / 10 : 0,
-      ranking: user.profile.ranking ?? 0,
-      contributionPoints: user.contributions.points ?? 0,
-      reputation: user.profile.reputation ?? 0,
+      easySolved,
+      easyTotal,
+      mediumSolved,
+      mediumTotal,
+      hardSolved,
+      hardTotal,
+      acceptanceRate: totalQuestions > 0
+        ? Math.round((totalSolved / totalQuestions) * 100 * 10) / 10
+        : 0,
+      ranking: solvedData.ranking ?? 0,
+      contributionPoints: solvedData.contributionPoints ?? 0,
+      reputation: solvedData.reputation ?? 0,
       submissionCalendar: calendar,
-      recentSubmissions: user.recentSubmissionList ?? [],
-      contestRating: contestData ? Math.round(contestData.rating) : null,
-      contestAttended: contestData?.attendedContestsCount ?? 0,
-      contestTopPercentage: contestData?.topPercentage ?? null,
+      recentSubmissions,
+      contestRating: contestData?.contestRating
+        ? Math.round(contestData.contestRating)
+        : null,
+      contestAttended: contestData?.contestAttend ?? 0,
+      contestTopPercentage: contestData?.contestTopPercentage ?? null,
     };
   } catch (error) {
     console.error('Error fetching LeetCode stats:', error);
