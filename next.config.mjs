@@ -6,6 +6,7 @@ const nextConfig = {
       { protocol: 'https', hostname: 'github-readme-stats.vercel.app' },
       { protocol: 'https', hostname: 'leetcard.jacoblin.com' },
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },
+      { protocol: 'https', hostname: 'leetcard.jacoblin.com' },
     ],
   },
   experimental: {

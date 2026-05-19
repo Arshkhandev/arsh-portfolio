@@ -2,7 +2,8 @@
 
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
-import { useEffect, useRef } from 'react';
+import { useEffect } from 'react';
+import Image from 'next/image';
 import type { LeetCodeStats } from '@/lib/leetcode';
 import { ExternalLink, TrendingUp, Award, Code2 } from 'lucide-react';
 
@@ -28,15 +29,9 @@ function Counter({ value, suffix = '' }: { value: number; suffix?: string }) {
 
 // ── Difficulty ring ────────────────────────────────────────────────
 function DifficultyCard({
-  label,
-  solved,
-  total,
-  color,
+  label, solved, total, color,
 }: {
-  label: string;
-  solved: number;
-  total: number;
-  color: string;
+  label: string; solved: number; total: number; color: string;
 }) {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.2 });
   const pct = total > 0 ? (solved / total) * 100 : 0;
@@ -46,18 +41,12 @@ function DifficultyCard({
 
   return (
     <div ref={ref} className="card-premium p-5 text-center">
-      {/* Mini SVG ring */}
       <div className="flex justify-center mb-3">
         <svg width="72" height="72" className="-rotate-90">
           <circle cx="36" cy="36" r={radius} stroke="hsl(var(--border))" strokeWidth="5" fill="none" />
           <motion.circle
-            cx="36"
-            cy="36"
-            r={radius}
-            stroke={color}
-            strokeWidth="5"
-            fill="none"
-            strokeLinecap="round"
+            cx="36" cy="36" r={radius}
+            stroke={color} strokeWidth="5" fill="none" strokeLinecap="round"
             strokeDasharray={circ}
             initial={{ strokeDashoffset: circ }}
             animate={inView ? { strokeDashoffset: circ - dash } : {}}
@@ -65,67 +54,9 @@ function DifficultyCard({
           />
         </svg>
       </div>
-      <p className="text-2xl font-bold font-mono">
-        <Counter value={solved} />
-      </p>
+      <p className="text-2xl font-bold font-mono"><Counter value={solved} /></p>
       <p className="text-xs text-muted-foreground mt-1 font-mono">/ {total}</p>
-      <p className="text-sm font-semibold mt-2" style={{ color }}>
-        {label}
-      </p>
-    </div>
-  );
-}
-
-// ── Submission heatmap ─────────────────────────────────────────────
-function SubmissionHeatmap({ calendar }: { calendar: Record<string, number> }) {
-  const now = Math.floor(Date.now() / 1000);
-  // Last 52 weeks (364 days)
-  const days = 364;
-  const startTs = now - days * 86400;
-
-  // Build a flat array of daily counts
-  const cells: number[] = [];
-  for (let i = 0; i < days; i++) {
-    const ts = startTs + i * 86400;
-    cells.push(calendar[ts.toString()] ?? 0);
-  }
-
-  // Group into weeks of 7
-  const weeks: number[][] = [];
-  for (let w = 0; w < 52; w++) {
-    weeks.push(cells.slice(w * 7, w * 7 + 7));
-  }
-
-  const heatClass = (n: number) => {
-    if (n === 0) return 'heat-0';
-    if (n <= 2) return 'heat-1';
-    if (n <= 5) return 'heat-2';
-    if (n <= 10) return 'heat-3';
-    return 'heat-4';
-  };
-
-  return (
-    <div className="overflow-x-auto">
-      <div className="flex gap-0.5 min-w-max">
-        {weeks.map((week, wi) => (
-          <div key={wi} className="flex flex-col gap-0.5">
-            {week.map((count, di) => (
-              <div
-                key={di}
-                title={`${count} submission${count !== 1 ? 's' : ''}`}
-                className={`w-2.5 h-2.5 rounded-sm transition-opacity hover:opacity-80 ${heatClass(count)}`}
-              />
-            ))}
-          </div>
-        ))}
-      </div>
-      <div className="flex items-center justify-end gap-2 mt-2">
-        <span className="text-[10px] text-muted-foreground font-mono">Less</span>
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div key={i} className={`w-2.5 h-2.5 rounded-sm heat-${i}`} />
-        ))}
-        <span className="text-[10px] text-muted-foreground font-mono">More</span>
-      </div>
+      <p className="text-sm font-semibold mt-2" style={{ color }}>{label}</p>
     </div>
   );
 }
@@ -138,8 +69,7 @@ function RecentSubmissions({ submissions }: { submissions: LeetCodeStats['recent
         <div key={i} className="flex items-center justify-between gap-3 p-2.5 rounded-lg bg-muted/50 border border-border/50">
           <a
             href={`https://leetcode.com/problems/${sub.titleSlug}/`}
-            target="_blank"
-            rel="noopener noreferrer"
+            target="_blank" rel="noopener noreferrer"
             className="text-sm hover:underline truncate flex-1"
           >
             {sub.title}
@@ -163,6 +93,7 @@ function RecentSubmissions({ submissions }: { submissions: LeetCodeStats['recent
 // ── Main section ───────────────────────────────────────────────────
 export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 });
+  const username = 'arsh_khan_dev';
 
   const noData = !data || data.totalSolved === 0;
 
@@ -187,28 +118,23 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
               <span className="text-muted-foreground"> Stats</span>
             </h2>
             <a
-              href="https://leetcode.com/u/arsh_khan_dev/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`https://leetcode.com/u/${username}/`}
+              target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
             >
-              <span className="font-mono">@arsh_khan_dev</span>
+              <span className="font-mono">@{username}</span>
               <ExternalLink className="w-3.5 h-3.5" />
             </a>
           </div>
         </motion.div>
 
         {noData ? (
-          /* Fallback: embed the public LeetCode card */
           <div className="card-premium p-8 text-center">
             <Code2 className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
-            <p className="text-muted-foreground mb-4">
-              Live stats temporarily unavailable. Check the profile directly:
-            </p>
+            <p className="text-muted-foreground mb-4">Check the profile directly:</p>
             <a
-              href="https://leetcode.com/u/arsh_khan_dev/"
-              target="_blank"
-              rel="noopener noreferrer"
+              href={`https://leetcode.com/u/${username}/`}
+              target="_blank" rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-foreground text-background text-sm"
             >
               View LeetCode Profile <ExternalLink className="w-3.5 h-3.5" />
@@ -228,9 +154,7 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
                   <Counter value={data.totalSolved} />
                 </p>
                 <p className="text-sm text-muted-foreground mt-1">Problems Solved</p>
-                <p className="text-xs text-muted-foreground font-mono mt-1">
-                  of {data.totalQuestions} total
-                </p>
+                <p className="text-xs text-muted-foreground font-mono mt-1">of {data.totalQuestions} total</p>
               </motion.div>
 
               {data.ranking > 0 && (
@@ -241,9 +165,7 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
                   className="card-premium p-6"
                 >
                   <TrendingUp className="w-5 h-5 mb-2 text-muted-foreground" />
-                  <p className="text-2xl font-bold font-mono">
-                    <Counter value={data.ranking} />
-                  </p>
+                  <p className="text-2xl font-bold font-mono"><Counter value={data.ranking} /></p>
                   <p className="text-xs text-muted-foreground mt-1">Global Rank</p>
                 </motion.div>
               )}
@@ -256,9 +178,7 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
                   className="card-premium p-6"
                 >
                   <Award className="w-5 h-5 mb-2 text-muted-foreground" />
-                  <p className="text-2xl font-bold font-mono">
-                    <Counter value={data.contestRating} />
-                  </p>
+                  <p className="text-2xl font-bold font-mono"><Counter value={data.contestRating} /></p>
                   <p className="text-xs text-muted-foreground mt-1">Contest Rating</p>
                 </motion.div>
               )}
@@ -276,31 +196,26 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
 
             {/* Difficulty breakdown */}
             <div className="grid grid-cols-3 gap-4">
-              <DifficultyCard
-                label="Easy"
-                solved={data.easySolved}
-                total={data.easyTotal}
-                color="#22c55e"
-              />
-              <DifficultyCard
-                label="Medium"
-                solved={data.mediumSolved}
-                total={data.mediumTotal}
-                color="#f59e0b"
-              />
-              <DifficultyCard
-                label="Hard"
-                solved={data.hardSolved}
-                total={data.hardTotal}
-                color="#ef4444"
-              />
+              <DifficultyCard label="Easy" solved={data.easySolved} total={data.easyTotal} color="#22c55e" />
+              <DifficultyCard label="Medium" solved={data.mediumSolved} total={data.mediumTotal} color="#f59e0b" />
+              <DifficultyCard label="Hard" solved={data.hardSolved} total={data.hardTotal} color="#ef4444" />
             </div>
 
-            {/* Heatmap + recent submissions */}
+            {/* LeetCode activity card + recent submissions */}
             <div className="grid md:grid-cols-2 gap-6">
+              {/* Official LeetCode stats card — always shows real data */}
               <div className="card-premium p-6">
-                <p className="text-sm font-semibold mb-4">Submission Activity</p>
-                <SubmissionHeatmap calendar={data.submissionCalendar} />
+                <p className="text-sm font-semibold mb-4">Activity Overview</p>
+                <div className="space-y-3">
+                  <Image
+                    src={`https://leetcard.jacoblin.com/${username}?theme=dark&font=DM+Mono&ext=heatmap`}
+                    alt="LeetCode Stats"
+                    width={500}
+                    height={200}
+                    className="w-full rounded-lg"
+                    unoptimized
+                  />
+                </div>
               </div>
 
               {data.recentSubmissions.length > 0 && (
