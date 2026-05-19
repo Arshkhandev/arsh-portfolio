@@ -207,14 +207,12 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
               <div className="card-premium p-6">
                 <p className="text-sm font-semibold mb-4">Activity Overview</p>
                 <div className="space-y-3">
-                  <Image
-                    src={`https://leetcard.jacoblin.com/${username}?theme=dark&font=DM+Mono&ext=heatmap`}
-                    alt="LeetCode Stats"
-                    width={500}
-                    height={200}
-                    className="w-full rounded-lg"
-                    unoptimized
-                  />
+                <img
+  src={`https://leetcard.jacoblin.com/${username}?theme=dark&ext=heatmap`}
+  alt="LeetCode Stats"
+  className="w-full rounded-lg"
+  loading="lazy"
+/>
                 </div>
               </div>
 
