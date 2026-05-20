@@ -37,7 +37,7 @@ function ContributionGraph({ weeks }: { weeks: ContributionWeek[] }) {
   };
 
   return (
-    <div ref={ref} className="overflow-x-auto  active:cursor-grabbing" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div ref={ref} className="overflow-x-auto " style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="flex gap-0.5 min-w-max">
         {weeks.map((week, wi) => (
           <motion.div
@@ -136,7 +136,7 @@ function RepoCard({ repo, index }: { repo: GitHubRepo; index: number }) {
       initial={{ opacity: 0, y: 12 }}
       animate={inView ? { opacity: 1, y: 0 } : {}}
       transition={{ delay: index * 0.05 }}
-      className="card-premium p-4 flex flex-col gap-3 hover:no-underline block"
+      className="card-premium p-4  flex-col gap-3 hover:no-underline block"
     >
       <div className="flex items-start justify-between gap-2">
         <h4 className="text-sm font-semibold truncate">{repo.name}</h4>
