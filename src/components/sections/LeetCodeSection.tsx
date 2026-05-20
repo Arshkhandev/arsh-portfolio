@@ -212,7 +212,19 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
   alt="LeetCode Stats"
   className="w-full rounded-lg"
   loading="lazy"
-/>
+/><div className="card-premium p-6">
+  <p className="text-sm font-semibold mb-4">Activity Overview</p>
+  <img
+    src={`https://github-readme-stats.vercel.app/api?username=Arshkhandev&show_icons=true&theme=dark&hide_border=true&bg_color=00000000&title_color=ffffff&text_color=888888&icon_color=ffffff&count_private=true`}
+    alt="GitHub Stats"
+    className="w-full rounded-lg mb-3"
+  />
+  <img
+    src={`https://github-readme-streak-stats.herokuapp.com?user=Arshkhandev&theme=dark&hide_border=true&background=00000000&stroke=444&ring=ffffff&fire=ffffff&currStreakLabel=888888`}
+    alt="GitHub Streak"
+    className="w-full rounded-lg"
+  />
+</div>
                 </div>
               </div>
 
