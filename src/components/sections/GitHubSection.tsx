@@ -37,7 +37,7 @@ function ContributionGraph({ weeks }: { weeks: ContributionWeek[] }) {
   };
 
   return (
-    <div ref={ref} className="overflow-x-auto cursor-grab active:cursor-grabbing" style={{ WebkitOverflowScrolling: 'touch' }}>
+    <div ref={ref} className="overflow-x-auto  active:cursor-grabbing" style={{ WebkitOverflowScrolling: 'touch' }}>
       <div className="flex gap-0.5 min-w-max">
         {weeks.map((week, wi) => (
           <motion.div
