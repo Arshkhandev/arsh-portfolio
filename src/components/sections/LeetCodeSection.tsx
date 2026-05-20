@@ -3,12 +3,11 @@
 import { motion, useMotionValue, useTransform, animate } from 'framer-motion';
 import { useInView } from 'react-intersection-observer';
 import { useEffect } from 'react';
-import Image from 'next/image';
 import type { LeetCodeStats } from '@/lib/leetcode';
 import { ExternalLink, TrendingUp, Award, Code2 } from 'lucide-react';
 
 // ── Animated counter ───────────────────────────────────────────────
-function Counter({ value, suffix = '' }: { value: number; suffix?: string }) {
+function Counter({ value }: { value: number }) {
   const count = useMotionValue(0);
   const rounded = useTransform(count, (v) => Math.round(v).toLocaleString());
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.5 });
@@ -22,15 +21,12 @@ function Counter({ value, suffix = '' }: { value: number; suffix?: string }) {
   return (
     <span ref={ref}>
       <motion.span>{rounded}</motion.span>
-      {suffix}
     </span>
   );
 }
 
 // ── Difficulty ring ────────────────────────────────────────────────
-function DifficultyCard({
-  label, solved, total, color,
-}: {
+function DifficultyCard({ label, solved, total, color }: {
   label: string; solved: number; total: number; color: string;
 }) {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.2 });
@@ -90,11 +86,80 @@ function RecentSubmissions({ submissions }: { submissions: LeetCodeStats['recent
   );
 }
 
+// ── Submission Heatmap using API data ──────────────────────────────
+function SubmissionHeatmap({ calendar }: { calendar: Record<string, number> }) {
+  const now = Math.floor(Date.now() / 1000);
+  const days = 364;
+  const startTs = now - days * 86400;
+
+  const cells: number[] = [];
+  for (let i = 0; i < days; i++) {
+    const ts = startTs + i * 86400;
+    // Try multiple timestamp formats
+    const count =
+      calendar[ts.toString()] ??
+      calendar[Math.floor(ts / 86400 * 86400).toString()] ??
+      0;
+    cells.push(count);
+  }
+
+  const weeks: number[][] = [];
+  for (let w = 0; w < 52; w++) {
+    weeks.push(cells.slice(w * 7, w * 7 + 7));
+  }
+
+  const heatClass = (n: number) => {
+    if (n === 0) return 'heat-0';
+    if (n <= 2) return 'heat-1';
+    if (n <= 5) return 'heat-2';
+    if (n <= 10) return 'heat-3';
+    return 'heat-4';
+  };
+
+  const totalActive = cells.filter(c => c > 0).length;
+
+  return (
+    <div>
+      <div className="overflow-x-auto pb-1">
+        <div className="flex gap-[3px]" style={{ width: 'max-content' }}>
+          {weeks.map((week, wi) => (
+            <div key={wi} className="flex flex-col gap-[3px]">
+              {week.map((count, di) => (
+                <div
+                  key={di}
+                  title={`${count} submission${count !== 1 ? 's' : ''}`}
+                  className={`rounded-sm transition-all hover:scale-125 hover:opacity-90 ${heatClass(count)}`}
+                  style={{ width: '11px', height: '11px' }}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="flex items-center justify-between mt-3">
+        <span className="text-[10px] text-muted-foreground font-mono">
+          {totalActive} active days this year
+        </span>
+        <div className="flex items-center gap-1.5">
+          <span className="text-[10px] text-muted-foreground font-mono">Less</span>
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={`rounded-sm heat-${i}`}
+              style={{ width: '11px', height: '11px' }}
+            />
+          ))}
+          <span className="text-[10px] text-muted-foreground font-mono">More</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Main section ───────────────────────────────────────────────────
 export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
   const [ref, inView] = useInView({ triggerOnce: true, threshold: 0.1 });
   const username = 'arsh_khan_dev';
-
   const noData = !data || data.totalSolved === 0;
 
   return (
@@ -142,7 +207,7 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
           </div>
         ) : (
           <div className="space-y-8">
-            {/* Big numbers */}
+            {/* Stats row */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
@@ -194,38 +259,18 @@ export function LeetCodeSection({ data }: { data: LeetCodeStats | null }) {
               </motion.div>
             </div>
 
-            {/* Difficulty breakdown */}
+            {/* Difficulty rings */}
             <div className="grid grid-cols-3 gap-4">
               <DifficultyCard label="Easy" solved={data.easySolved} total={data.easyTotal} color="#22c55e" />
               <DifficultyCard label="Medium" solved={data.mediumSolved} total={data.mediumTotal} color="#f59e0b" />
               <DifficultyCard label="Hard" solved={data.hardSolved} total={data.hardTotal} color="#ef4444" />
             </div>
 
-            {/* LeetCode activity card + recent submissions */}
+            {/* Heatmap + Recent Submissions */}
             <div className="grid md:grid-cols-2 gap-6">
-              {/* Official LeetCode stats card — always shows real data */}
               <div className="card-premium p-6">
-                <p className="text-sm font-semibold mb-4">Activity Overview</p>
-                <div className="space-y-3">
-                <img
-  src={`https://leetcard.jacoblin.com/${username}?theme=dark&ext=heatmap`}
-  alt="LeetCode Stats"
-  className="w-full rounded-lg"
-  loading="lazy"
-/><div className="card-premium p-6">
-  <p className="text-sm font-semibold mb-4">Activity Overview</p>
-  <img
-    src={`https://github-readme-stats.vercel.app/api?username=Arshkhandev&show_icons=true&theme=dark&hide_border=true&bg_color=00000000&title_color=ffffff&text_color=888888&icon_color=ffffff&count_private=true`}
-    alt="GitHub Stats"
-    className="w-full rounded-lg mb-3"
-  />
-  <img
-    src={`https://github-readme-streak-stats.herokuapp.com?user=Arshkhandev&theme=dark&hide_border=true&background=00000000&stroke=444&ring=ffffff&fire=ffffff&currStreakLabel=888888`}
-    alt="GitHub Streak"
-    className="w-full rounded-lg"
-  />
-</div>
-                </div>
+                <p className="text-sm font-semibold mb-5">Submission Activity</p>
+                <SubmissionHeatmap calendar={data.submissionCalendar} />
               </div>
 
               {data.recentSubmissions.length > 0 && (
